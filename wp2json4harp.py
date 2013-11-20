@@ -46,7 +46,7 @@ def createListing(arr, arr_name):
 	"""
 	Pass to  me an array of WP_Object's
 	"""
-	print "'%s' : [" % arr_name
+	print "\"%s\" : [" % arr_name
 	i =0
 	for item in arr:
 		print item.to_JSON()
