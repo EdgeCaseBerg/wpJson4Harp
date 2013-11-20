@@ -35,7 +35,7 @@ def default(obj):
     )
     return millis
 
-import datetime, json
+import json
 
 
 class WP_Post(object):
@@ -55,7 +55,7 @@ def databaseMigrate():
 	db = MySQLdb.connect(host=MYSQL_HOST,user=MYSQL_USER,passwd=MYSQL_PASS,  db=MYSQL_DB)
 	curs = db.cursor()
 
-	curs.execute("SELECT p.ID, p.post_author, p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value from %(WP_PREFIX)sposts p JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id ORDER BY p.ID"  % globals())
+	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value from %(WP_PREFIX)sposts p JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
 	placeholder = WP_Post()
 	setattr(placeholder,'ID',-1)
@@ -70,7 +70,7 @@ def databaseMigrate():
 		setattr(posts[-1],'title',row[4])
 		setattr(posts[-1],'status',row[5])
 		setattr(posts[-1],row[6],row[7])
-
+	
 	del posts[0] #Remove placeholder
 	print '['
 	i=0
