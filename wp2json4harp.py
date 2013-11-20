@@ -42,6 +42,19 @@ class WP_Object(object):
 	def to_JSON(self):
 		return json.dumps(self, default=default, sort_keys=True, indent=4)
 
+def createListing(arr, arr_name):
+	"""
+	Pass to  me an array of WP_Object's
+	"""
+	print "'%s' : [" % arr_name
+	i =0
+	for item in arr:
+		print item.to_JSON()
+		if i >= 0 and len(arr)-1!=i:
+			print ','
+		i+=1
+	print ']'
+
 def databaseMigrate():
 	#Verify database connection
 	try:
@@ -73,15 +86,7 @@ def databaseMigrate():
 		setattr(posts[-1],row[6],row[7])
 	
 	del posts[0] #Remove placeholder
-	print '"posts" : '
-	print '['
-	i=0
-	for post in posts:
-		print post.to_JSON()
-		if i >= 0 and len(posts)-1!=i:
-			print ','
-		i+=1
-	print ']'
+	createListing(posts,'posts')
 
 	sql = "SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals()
 	
@@ -105,17 +110,8 @@ def databaseMigrate():
 			setattr(comments[-1],row[9]. row[10])
 	del comments[0]
 
-	print ',"comments" : '
-	print '['
-	i=0
-	for comment in comments:
-		print comment.to_JSON()
-		if i >= 0 and len(comments)-1!=i:
-			print ','
-		i +=1
-	print ']'
-
-	print '}'
+	print ',',
+	createListing(comments,'comments')
 
 		
 if __name__ == "__main__":
