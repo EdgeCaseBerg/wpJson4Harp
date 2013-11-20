@@ -38,7 +38,7 @@ def default(obj):
 import json
 
 
-class WP_Post(object):
+class WP_Object(object):
 	def to_JSON(self):
 		return json.dumps(self, default=default, sort_keys=True, indent=4)
 
@@ -52,17 +52,18 @@ def databaseMigrate():
 		print "Could not connect to database. Aborting..."
 		sys.exit(1)
 
+	print '{'
 	db = MySQLdb.connect(host=MYSQL_HOST,user=MYSQL_USER,passwd=MYSQL_PASS,  db=MYSQL_DB)
 	curs = db.cursor()
 
 	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value from %(WP_PREFIX)sposts p JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
-	placeholder = WP_Post()
+	placeholder = WP_Object()
 	setattr(placeholder,'ID',-1)
 	posts = [placeholder]
 	for row in curs.fetchall():
 		if posts[-1].ID != row[0]:
-			posts.append(WP_Post())
+			posts.append(WP_Object())
 		setattr(posts[-1],'ID',row[0])
 		setattr(posts[-1],'author',row[1])
 		setattr(posts[-1],'date',row[2])
@@ -72,6 +73,7 @@ def databaseMigrate():
 		setattr(posts[-1],row[6],row[7])
 	
 	del posts[0] #Remove placeholder
+	print '"posts" : '
 	print '['
 	i=0
 	for post in posts:
@@ -79,8 +81,41 @@ def databaseMigrate():
 		if i >= 0 and len(posts)-1!=i:
 			print ','
 		i+=1
-
 	print ']'
+
+	sql = "SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals()
+	
+	curs.execute(sql)
+	placeholder = WP_Object()
+	setattr(placeholder,'ID',-1)
+	comments = [placeholder]
+	for row in curs.fetchall():
+		if comments[-1].ID != row[0]:
+			comments.append(WP_Object())
+		setattr(comments[-1],'ID',row[0])
+		setattr(comments[-1],'post_ID',row[1])
+		setattr(comments[-1],'author',row[2])
+		setattr(comments[-1],'author_email',row[3])
+		setattr(comments[-1],'author_url',row[4])
+		setattr(comments[-1],'date',row[5])
+		setattr(comments[-1],'content',row[6])
+		setattr(comments[-1],'user_id',row[7])
+		setattr(comments[-1],'nickname',row[8])
+		if row[9] is not None and row[10] is not None:
+			setattr(comments[-1],row[9]. row[10])
+	del comments[0]
+
+	print ',"comments" : '
+	print '['
+	i=0
+	for comment in comments:
+		print comment.to_JSON()
+		if i >= 0 and len(comments)-1!=i:
+			print ','
+		i +=1
+	print ']'
+
+	print '}'
 
 		
 if __name__ == "__main__":
