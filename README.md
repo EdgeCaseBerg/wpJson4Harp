@@ -1,8 +1,8 @@
 wpJson4Harp
 ===========
 
-Author: Ethan J. Eldridge
-Website: ejehardenberg.github.io
+Author: Ethan J. Eldridge  
+Website: ejehardenberg.github.io  
 
 Python tool to migrate WP contents to JSON for use in [harp](http://harpjs.com/)
 
