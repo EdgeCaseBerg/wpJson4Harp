@@ -24,6 +24,15 @@ To Run:
 
 Once you've ran the script, you'll get folders for each of the _data.json files. This makes things a bit easier to coordinate, and you can see from the example jade file how you can access the information pulled from your blog.
 
+If you'd like to try it out:
+
+1. Install [Wordpress](http://teamtreehouse.com/library/how-to-make-a-wordpress-blog/getting-started-with-wordpress/the-famous-5minute-wordpress-install-2)
+2. Install [Harp](http://harpjs.com/)
+3. Download this script
+4. Configure it to your liking using the options below
+5. Run the script!
+6. Move the folders and files into your harp site area.
+
 Some configuration details:
 
 Configuration is at the top of the script, you'll need to enter your database credentials.
