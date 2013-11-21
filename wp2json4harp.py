@@ -17,10 +17,11 @@ WP_PREFIX = "wp_"
 import MySQLdb
 
 import sys
+import calendar, datetime
 
 def default(obj):
     """Default JSON serializer."""
-    import calendar, datetime
+
 
     if not isinstance(obj, datetime.datetime):
     	return obj.__dict__
@@ -42,18 +43,6 @@ class WP_Object(object):
 	def to_JSON(self):
 		return json.dumps(self, default=default, sort_keys=True, indent=4)
 
-def createListing(arr, arr_name):
-	"""
-	Pass to  me an array of WP_Object's
-	"""
-	print "\"%s\" : [" % arr_name
-	i =0
-	for item in arr:
-		print item.to_JSON()
-		if i >= 0 and len(arr)-1!=i:
-			print ','
-		i+=1
-	print ']'
 
 def databaseMigrate():
 	#Verify database connection
@@ -65,11 +54,10 @@ def databaseMigrate():
 		print "Could not connect to database. Aborting..."
 		sys.exit(1)
 
-	print '{'
 	db = MySQLdb.connect(host=MYSQL_HOST,user=MYSQL_USER,passwd=MYSQL_PASS,  db=MYSQL_DB)
 	curs = db.cursor()
 
-	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value from %(WP_PREFIX)sposts p JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
+	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
 	placeholder = WP_Object()
 	setattr(placeholder,'ID',-1)
@@ -83,10 +71,37 @@ def databaseMigrate():
 		setattr(posts[-1],'content',row[3])
 		setattr(posts[-1],'title',row[4])
 		setattr(posts[-1],'status',row[5])
-		setattr(posts[-1],row[6],row[7])
+		if row[6] and row[7]:
+			setattr(posts[-1],row[6],row[7])
+		setattr(posts[-1],'ptype',row[8])
 	
 	del posts[0] #Remove placeholder
-	createListing(posts,'posts')
+	
+	#Page posts result in pages to be made.
+	p = open('_pagedata.json','w')
+	b = open('_blogdata.json','w')
+	pcount = 0
+	bcount = 0
+	totalPages = sum(map(lambda x: x.ptype == "page",posts))
+	totalPosts = sum(map(lambda x: x.ptype == "post",posts))
+	p.write('{')
+	b.write('{')
+	for post in posts:
+		if post.ptype == "page":
+			#Throw the id onto the string to ensure unique ness of the title
+			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			if totalPages-1 != pcount:
+				p.write(',')
+			pcount+=1
+		elif post.ptype == "post":
+			b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			if totalPosts-1 != bcount:
+				b.write(',')
+			bcount+=1
+	p.write('}')
+	b.write('}')
+	p.close()
+	b.close()
 
 	sql = "SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals()
 	
@@ -110,10 +125,13 @@ def databaseMigrate():
 			setattr(comments[-1],row[9]. row[10])
 	del comments[0]
 
-	print ',',
-	createListing(comments,'comments')
-
-	print  '}'
+	c = open('_commentdata.json','w')
+	c.write('{')
+	for comment in comments:
+		c.write("\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
+	c.write('}')
+	c.close()
+	
 
 		
 if __name__ == "__main__":
