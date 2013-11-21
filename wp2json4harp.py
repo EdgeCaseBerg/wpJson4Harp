@@ -64,7 +64,7 @@ def makeExampleFile():
 	example.write('ul\n')
 	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
 	example.write('    li\n')
-	example.write('      h3 #{pagedata.title} #{pagedata.date}\n')
+	example.write('      h3 a(href="pagedata.slug") #{pagedata.title} #{pagedata.date}\n')
 	example.write('      #{pagedata.content}\n')
 	example.write('h2 Recents Posts\n')
 	example.write('ul\n')
@@ -96,7 +96,7 @@ def databaseMigrate():
 	db = MySQLdb.connect(host=MYSQL_HOST,user=MYSQL_USER,passwd=MYSQL_PASS,  db=MYSQL_DB)
 	curs = db.cursor()
 
-	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
+	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type, p.post_name from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
 	placeholder = WP_Object()
 	setattr(placeholder,'ID',-1)
@@ -113,6 +113,10 @@ def databaseMigrate():
 		if row[6] and row[7]:
 			setattr(posts[-1],row[6].decode(ENCODING),row[7].decode(ENCODING))
 		setattr(posts[-1],'ptype',row[8])
+		if row[9]:
+			setattr(posts[-1],'slug',row[9].decode(ENCODING))
+		else:
+			setattr(posts[-1],'slug',row[0])
 	
 	del posts[0] #Remove placeholder
 	
@@ -129,7 +133,7 @@ def databaseMigrate():
 	ncount = 0
 	totalPages = sum(map(lambda x: x.ptype == "page",posts))
 	totalPosts = sum(map(lambda x: x.ptype == "post",posts))
-	totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item",posts))
+	totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item" and hasattr(x,'_menu_item_url'),posts))
 	p.write('{')
 	b.write('{')
 	n.write('{')
@@ -149,12 +153,13 @@ def databaseMigrate():
 			bcount+=1
 		elif post.ptype == "nav_menu_item" and hasattr(post,'_menu_item_url'):
 			n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
+			print totalNavs
 			if totalNavs-1 != ncount:
 				n.write(',')
 			ncount+=1
 		else:
 			#I'm just printing to look at the objects to decide to convert them into something or not.
-			print(post.to_JSON())
+			#print(post.to_JSON())
 			pass
 			#do what you will with the other types
 

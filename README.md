@@ -24,7 +24,7 @@ Once you've ran the script, you'll get folders for each of the _data.json files.
 
 Some configuration details:
 
-Configuration is at the top of the script, you'll need to enter your database credentials and if you only want to include published posts, set the `ONLY_PUBLISHED` variable to True. If you have a strange encoding on your database, specify it in the ENCODING constant.
+Configuration is at the top of the script, you'll need to enter your database credentials and if you only want to include published posts, set the `ONLY_PUBLISHED` variable to True. If you have a strange encoding on your database, specify it in the `ENCODING` constant.
 
 TODO: 
 
