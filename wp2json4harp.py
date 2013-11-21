@@ -63,7 +63,7 @@ def makeExampleFile():
 	example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
 	example.write('    li\n')
 	#This slug below might not be very good. 
-	example.write('      a(href="#{navitem._menu_item_url}") #{navitem.title}\n')
+	example.write('      a(href="#{navitem.slug}") #{navitem.title}\n')
 	example.write('h2 Your Pages\n')
 	example.write('ul\n')
 	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
@@ -100,7 +100,7 @@ def databaseMigrate():
 	db = MySQLdb.connect(host=MYSQL_HOST,user=MYSQL_USER,passwd=MYSQL_PASS,  db=MYSQL_DB)
 	curs = db.cursor()
 
-	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type, p.post_name from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
+	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type, p.post_name from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id LEFT JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
 	placeholder = WP_Object()
 	setattr(placeholder,'ID',-1)
@@ -137,7 +137,7 @@ def databaseMigrate():
 	ncount = 0
 	totalPages = sum(map(lambda x: x.ptype == "page",posts))
 	totalPosts = sum(map(lambda x: x.ptype == "post",posts))
-	totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item" and hasattr(x,'_menu_item_url'),posts))
+	totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item" ,posts))
 	p.write('{')
 	b.write('{')
 	n.write('{')
@@ -167,7 +167,14 @@ def databaseMigrate():
 			if totalPosts-1 != bcount:
 				b.write(',')
 			bcount+=1
-		elif post.ptype == "nav_menu_item" and hasattr(post,'_menu_item_url'):
+		elif post.ptype == "nav_menu_item" :
+			if post._menu_item_object == "custom":
+				post.slug = post._menu_item_url
+			elif post._menu_item_object == "page":
+				for temp_post in posts:
+					if int(temp_post.ID) == int(post._menu_item_object_id):
+						post.slug = "%s/%s" % (PAGES_DIR,temp_post.slug)
+						post.title = temp_post.title
 			n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
 			if totalNavs-1 != ncount:
 				n.write(',')
