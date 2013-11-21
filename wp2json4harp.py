@@ -9,6 +9,7 @@ MYSQL_USER=""
 MYSQL_PASS=""
 MYSQL_DB  =""
 WP_PREFIX = "wp_"
+ONLY_PUBLISHED = False
 
 #Required: MySQLdb python module
 #On Linux: python-mysqldb
@@ -88,6 +89,8 @@ def databaseMigrate():
 	b.write('{')
 	for post in posts:
 		if post.ptype == "page":
+			if ONLY_PUBLISHED and post.status != "publish":
+				continue
 			#Throw the id onto the string to ensure unique ness of the title
 			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if totalPages-1 != pcount:
