@@ -146,22 +146,24 @@ def databaseMigrate():
 				continue
 		if post.ptype == "page":
 			#Throw the id onto the string to ensure unique ness of the title
-			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if GENERATE_PAGES:
 				tmp = open("%s%s/%s.md" % (ROOT_DIR, PAGES_DIR, post.slug),'w')
 				tmp.write("#%s\n\n" % post.title)
 				tmp.write(post.content)
 				tmp.close()
+				delattr(post,'content')
+			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if totalPages-1 != pcount:
 				p.write(',')
 			pcount+=1
 		elif post.ptype == "post":
-			b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if GENERATE_POSTS:
 				tmp = open("%s%s/%s.md" % (ROOT_DIR, BLOG_DIR, post.slug),'w')
 				tmp.write("#%s\n\n" % post.title)
 				tmp.write(post.content)
 				tmp.close()
+				delattr(post,'content')
+			b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if totalPosts-1 != bcount:
 				b.write(',')
 			bcount+=1
