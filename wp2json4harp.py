@@ -1,3 +1,6 @@
+#!/usr/bin/env python2.7.3
+# -*- coding: UTF-8 -*-
+
 """
 Author: Ethan Joachim Eldridge
 Website: ejehardenberg.github.io
@@ -10,6 +13,7 @@ MYSQL_PASS=""
 MYSQL_DB  =""
 WP_PREFIX = "wp_"
 ONLY_PUBLISHED = False
+ENCODING = 'latin' #irritating unicode
 
 #Required: MySQLdb python module
 #On Linux: python-mysqldb
@@ -19,6 +23,8 @@ import MySQLdb
 
 import sys
 import calendar, datetime
+import os
+
 
 def default(obj):
     """Default JSON serializer."""
@@ -67,30 +73,43 @@ def databaseMigrate():
 		if posts[-1].ID != row[0]:
 			posts.append(WP_Object())
 		setattr(posts[-1],'ID',row[0])
-		setattr(posts[-1],'author',row[1])
+		setattr(posts[-1],'author',row[1].decode(ENCODING))
 		setattr(posts[-1],'date',row[2])
-		setattr(posts[-1],'content',row[3])
-		setattr(posts[-1],'title',row[4])
+		setattr(posts[-1],'content',row[3].decode(ENCODING))
+		setattr(posts[-1],'title',row[4].decode(ENCODING))
 		setattr(posts[-1],'status',row[5])
 		if row[6] and row[7]:
-			setattr(posts[-1],row[6],row[7])
+			setattr(posts[-1],row[6].decode(ENCODING),row[7].decode(ENCODING))
 		setattr(posts[-1],'ptype',row[8])
 	
 	del posts[0] #Remove placeholder
 	
 	#Page posts result in pages to be made.
-	p = open('_pagedata.json','w')
-	b = open('_blogdata.json','w')
+	pdir = 'pages'
+	bdir = 'blog'
+	ndir = 'nav'
+	if not os.path.exists(pdir):
+		os.makedirs(pdir)
+	if not os.path.exists(bdir):
+		os.makedirs(bdir)
+	if not os.path.exists(ndir):
+		os.makedirs(ndir)
+	p = open("%(pdir)s/_data.json" % locals(),'w')
+	b = open('%(bdir)s/_data.json' % locals(),'w')
+	n = open('%(ndir)s/_data.json' % locals(),'w')
 	pcount = 0
 	bcount = 0
+	ncount = 0
 	totalPages = sum(map(lambda x: x.ptype == "page",posts))
 	totalPosts = sum(map(lambda x: x.ptype == "post",posts))
+	totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item",posts))
 	p.write('{')
 	b.write('{')
+	n.write('{')
 	for post in posts:
-		if post.ptype == "page":
-			if ONLY_PUBLISHED and post.status != "publish":
+		if ONLY_PUBLISHED and hasattr(post,'status') and post.status != "publish":
 				continue
+		if post.ptype == "page":
 			#Throw the id onto the string to ensure unique ness of the title
 			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if totalPages-1 != pcount:
@@ -101,10 +120,22 @@ def databaseMigrate():
 			if totalPosts-1 != bcount:
 				b.write(',')
 			bcount+=1
+		elif post.ptype == "nav_menu_item" and hasattr(post,'_menu_item_url'):
+			n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
+			if totalNavs-1 != ncount:
+				n.write(',')
+			ncount+=1
+		else:
+			print(post.to_JSON())
+			pass
+			#do what you will with the other types
+
 	p.write('}')
 	b.write('}')
+	n.write('}')
 	p.close()
 	b.close()
+	n.close()
 
 	sql = "SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals()
 	
@@ -117,24 +148,48 @@ def databaseMigrate():
 			comments.append(WP_Object())
 		setattr(comments[-1],'ID',row[0])
 		setattr(comments[-1],'post_ID',row[1])
-		setattr(comments[-1],'author',row[2])
-		setattr(comments[-1],'author_email',row[3])
-		setattr(comments[-1],'author_url',row[4])
+		setattr(comments[-1],'author',row[2].decode(ENCODING))
+		setattr(comments[-1],'author_email',row[3].decode(ENCODING))
+		setattr(comments[-1],'author_url',row[4].decode(ENCODING))
 		setattr(comments[-1],'date',row[5])
-		setattr(comments[-1],'content',row[6])
+		setattr(comments[-1],'content',row[6].decode(ENCODING))
 		setattr(comments[-1],'user_id',row[7])
-		setattr(comments[-1],'nickname',row[8])
+		setattr(comments[-1],'nickname',row[8].decode(ENCODING))
 		if row[9] is not None and row[10] is not None:
 			setattr(comments[-1],row[9]. row[10])
 	del comments[0]
 
-	c = open('_commentdata.json','w')
+	cdir = 'comments'
+	if not os.path.exists(cdir):
+		os.makedirs(cdir)
+	c = open('%(cdir)s/_data.json' % locals() ,'w' )
 	c.write('{')
 	for comment in comments:
 		c.write("\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
 	c.write('}')
 	c.close()
 	
+	#Generate a little bit of layout for the user to get started:
+	example = open('example.jade','w')
+	example.write('h1 This is an example page to show your wp\n')
+	example.write('ul\n')
+	example.write('  each navitem in public.%(ndir)s._data\n' % locals())
+	example.write('    li\n')
+	#This slug below might not be very good. 
+	example.write('      a(href="#{navitem._menu_item_url}") #{navitem.title}\n')
+	example.write('h2 Your Pages\n')
+	example.write('ul\n')
+	example.write('  each pagedata in public.%(pdir)s._data\n' % locals())
+	example.write('    li\n')
+	example.write('      h3 #{pagedata.title} #{pagedata.date}\n')
+	example.write('      #{pagedata.content}\n')
+	example.write('h2 Recents Posts\n')
+	example.write('ul\n')
+	example.write('  each blogpost in public.%(bdir)s._data\n' % locals())
+	example.write('    li\n')
+	example.write('      h3 #{blogpost.title} #{blogpost.date}\n')
+	example.write('      #{blogpost.content}\n')
+	example.close()
 
 		
 if __name__ == "__main__":
