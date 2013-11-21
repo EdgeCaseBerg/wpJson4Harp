@@ -156,7 +156,7 @@ def databaseMigrate():
 					delattr(post,'content')
 				tmp.close()
 			p = open("%s%s/_data.json" % (ROOT_DIR, post.ptype),'a')
-			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			p.write(" \"%s%d\" : %s " % (post.title.encode(ENCODING), post.ID, post.to_JSON()) )
 			if ptypeTotal[post.ptype]-1 != ptypeCount[post.ptype]:
 				p.write(',')
 			ptypeCount[post.ptype]+=1
@@ -250,7 +250,7 @@ def databaseMigrate():
 		setattr(comments[-1],'user_id',row[7])
 		setattr(comments[-1],'nickname',row[8].decode(ENCODING))
 		if row[9] is not None and row[10] is not None:
-			setattr(comments[-1],row[9]. row[10])
+			setattr(comments[-1],row[9], row[10])
 	del comments[0]
 
 	checkAndMakeDir("%(ROOT_DIR)s%(COMMENTS_DIR)s" % globals())
