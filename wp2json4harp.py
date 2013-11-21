@@ -134,8 +134,7 @@ def databaseMigrate():
 		for ptype in post_types:
 			checkAndMakeDir("%s%s" % (ROOT_DIR,ptype))
 			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'w')
-			p.close()
-			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'w')
+			p.write('{')
 			p.close()
 			ptypeCount[ptype] = 0
 			ptypeTotal[ptype] = sum(map(lambda x: x.ptype == ptype ,posts))
@@ -152,6 +151,10 @@ def databaseMigrate():
 			if ptypeTotal[post.ptype]-1 != ptypeCount[post.ptype]:
 				p.write(',')
 			ptypeCount[post.ptype]+=1
+			p.close()
+		for ptype in post_types:
+			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'a+')
+			p.write('}')
 			p.close()
 	else:
 		checkAndMakeDir("%(ROOT_DIR)s%(PAGES_DIR)s" % globals())
