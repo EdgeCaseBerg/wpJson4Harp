@@ -129,6 +129,7 @@ Configuration of Script
 TODO: 
 
 - Taxonomy?
+- Add nav stuff to the PULL_TYPES area as well to help out with navigation
 - How does one pull in the comments to a post?
 - Use getopt to make cmd line arguments instead of constants
 - More examples!
