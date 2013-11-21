@@ -15,6 +15,7 @@ Current Features:
 4. Creates JSON for Pages
 5. Creates .md files for the Posts
 6. Creates .md files for the pages
+7. If using the PULL_TYPES, will pull down entire wp_post table and convert it into usable _data.
 
 To Run:
 
