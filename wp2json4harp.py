@@ -22,6 +22,7 @@ BLOG_DIR = 'blog'
 NAV_DIR = 'nav'
 COMMENTS_DIR = 'comments'
 EXAMPLE_FILE = 'example.jade'
+PULL_TYPES = True
 
 #Required: MySQLdb python module
 #On Linux: python-mysqldb
@@ -32,7 +33,7 @@ import MySQLdb
 import sys
 import calendar, datetime
 import os
-
+import sets
 
 #Need to give the json serializer it's own function because
 #datetimes will complain about not having a __dict__ method
@@ -102,6 +103,7 @@ def databaseMigrate():
 
 	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type, p.post_name from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id LEFT JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
+	post_types = sets.Set()
 	placeholder = WP_Object()
 	setattr(placeholder,'ID',-1)
 	posts = [placeholder]
@@ -121,76 +123,103 @@ def databaseMigrate():
 			setattr(posts[-1],'slug',row[9].decode(ENCODING))
 		else:
 			setattr(posts[-1],'slug',row[0])
+		post_types.add(row[8])
 	
 	del posts[0] #Remove placeholder
 	
-	
-	checkAndMakeDir(PAGES_DIR)
-	checkAndMakeDir(BLOG_DIR)
-	checkAndMakeDir(NAV_DIR)
 
-	p = open("%(ROOT_DIR)s%(PAGES_DIR)s/_data.json" % globals(),'w')
-	b = open('%(ROOT_DIR)s%(BLOG_DIR)s/_data.json' % globals(),'w')
-	n = open('%(ROOT_DIR)s%(NAV_DIR)s/_data.json' % globals(),'w')
-	pcount = 0
-	bcount = 0
-	ncount = 0
-	totalPages = sum(map(lambda x: x.ptype == "page",posts))
-	totalPosts = sum(map(lambda x: x.ptype == "post",posts))
-	totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item" ,posts))
-	p.write('{')
-	b.write('{')
-	n.write('{')
-	for post in posts:
-		if ONLY_PUBLISHED and hasattr(post,'status') and post.status != "publish":
-				continue
-		if post.ptype == "page":
-			#Throw the id onto the string to ensure unique ness of the title
-			if GENERATE_PAGES:
-				tmp = open("%s%s/%s.md" % (ROOT_DIR, PAGES_DIR, post.slug),'w')
-				tmp.write("#%s\n\n" % post.title)
-				tmp.write(post.content)
-				tmp.close()
-				delattr(post,'content')
-			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
-			if totalPages-1 != pcount:
-				p.write(',')
-			pcount+=1
-		elif post.ptype == "post":
+	if PULL_TYPES:
+		ptypeCount = {}
+		ptypeTotal = {}
+		for ptype in post_types:
+			checkAndMakeDir("%s%s" % (ROOT_DIR,ptype))
+			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'w')
+			p.close()
+			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'w')
+			p.close()
+			ptypeCount[ptype] = 0
+			ptypeTotal[ptype] = sum(map(lambda x: x.ptype == ptype ,posts))
+		for post in posts:
 			if GENERATE_POSTS:
-				tmp = open("%s%s/%s.md" % (ROOT_DIR, BLOG_DIR, post.slug),'w')
-				tmp.write("#%s\n\n" % post.title)
-				tmp.write(post.content)
+				tmp = open("%s%s/%s.md" % (ROOT_DIR, post.ptype, post.slug),'w+')
+				tmp.write("#%s\n\n" % post.title.encode(ENCODING))
+				if(hasattr(post,'content')):
+					tmp.write(post.content.encode(ENCODING))
+					delattr(post,'content')
 				tmp.close()
-				delattr(post,'content')
-			b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
-			if totalPosts-1 != bcount:
-				b.write(',')
-			bcount+=1
-		elif post.ptype == "nav_menu_item" :
-			if post._menu_item_object == "custom":
-				post.slug = post._menu_item_url
-			elif post._menu_item_object == "page":
-				for temp_post in posts:
-					if int(temp_post.ID) == int(post._menu_item_object_id):
-						post.slug = "%s/%s" % (PAGES_DIR,temp_post.slug)
-						post.title = temp_post.title
-			n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
-			if totalNavs-1 != ncount:
-				n.write(',')
-			ncount+=1
-		else:
-			#I'm just printing to look at the objects to decide to convert them into something or not.
-			#print(post.to_JSON())
-			pass
-			#do what you will with the other types
+			p = open("%s%s/_data.json" % (ROOT_DIR, post.ptype),'a')
+			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			if ptypeTotal[post.ptype]-1 != ptypeCount[post.ptype]:
+				p.write(',')
+			ptypeCount[post.ptype]+=1
+			p.close()
+	else:
+		checkAndMakeDir("%(ROOT_DIR)s%(PAGES_DIR)s" % globals())
+		checkAndMakeDir("%(ROOT_DIR)s%(BLOG_DIR)s" % globals())
+		checkAndMakeDir("%(ROOT_DIR)s%(NAV_DIR)s" % globals())
 
-	p.write('}')
-	b.write('}')
-	n.write('}')
-	p.close()
-	b.close()
-	n.close()
+		p = open("%(ROOT_DIR)s%(PAGES_DIR)s/_data.json" % globals(),'w')
+		b = open('%(ROOT_DIR)s%(BLOG_DIR)s/_data.json' % globals(),'w')
+		n = open('%(ROOT_DIR)s%(NAV_DIR)s/_data.json' % globals(),'w')
+		pcount = 0
+		bcount = 0
+		ncount = 0
+		totalPages = sum(map(lambda x: x.ptype == "page",posts))
+		totalPosts = sum(map(lambda x: x.ptype == "post",posts))
+		totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item" ,posts))
+		p.write('{')
+		b.write('{')
+		n.write('{')
+		for post in posts:
+			if ONLY_PUBLISHED and hasattr(post,'status') and post.status != "publish":
+					continue
+			if post.ptype == "page":
+				#Throw the id onto the string to ensure unique ness of the title
+				if GENERATE_PAGES:
+					tmp = open("%s%s/%s.md" % (ROOT_DIR, PAGES_DIR, post.slug),'w')
+					tmp.write("#%s\n\n" % post.title)
+					tmp.write(post.content)
+					tmp.close()
+					delattr(post,'content')
+				p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+				if totalPages-1 != pcount:
+					p.write(',')
+				pcount+=1
+			elif post.ptype == "post":
+				if GENERATE_POSTS:
+					tmp = open("%s%s/%s.md" % (ROOT_DIR, BLOG_DIR, post.slug),'w')
+					tmp.write("#%s\n\n" % post.title)
+					tmp.write(post.content)
+					tmp.close()
+					delattr(post,'content')
+				b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+				if totalPosts-1 != bcount:
+					b.write(',')
+				bcount+=1
+			elif post.ptype == "nav_menu_item" :
+				if post._menu_item_object == "custom":
+					post.slug = post._menu_item_url
+				elif post._menu_item_object == "page":
+					for temp_post in posts:
+						if int(temp_post.ID) == int(post._menu_item_object_id):
+							post.slug = "%s/%s" % (PAGES_DIR,temp_post.slug)
+							post.title = temp_post.title
+				n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
+				if totalNavs-1 != ncount:
+					n.write(',')
+				ncount+=1
+			else:
+				#I'm just printing to look at the objects to decide to convert them into something or not.
+				#print(post.to_JSON())
+				pass
+				#do what you will with the other types
+
+		p.write('}')
+		b.write('}')
+		n.write('}')
+		p.close()
+		b.close()
+		n.close()
 
 	curs.execute("SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals())
 	placeholder = WP_Object()
@@ -212,13 +241,18 @@ def databaseMigrate():
 			setattr(comments[-1],row[9]. row[10])
 	del comments[0]
 
-	checkAndMakeDir(COMMENTS_DIR)
-	c = open('%(ROOT_DIR)s%(COMMENTS_DIR)s/_data.json' % globals() ,'w' )
+	checkAndMakeDir("%(ROOT_DIR)s%(COMMENTS_DIR)s" % globals())
+	c = open("%(ROOT_DIR)s%(COMMENTS_DIR)s/_data.json" % globals() ,'w' )
 	c.write('{')
 	for comment in comments:
 		c.write("\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
 	c.write('}')
 	c.close()
+
+
+	
+	
+			
 	
 	makeExampleFile()
 

@@ -89,6 +89,10 @@ Configuration of Script
 			<td>The encoding to decode the content from the database in, I've defaulted it to latin to handle some annoying unicode errors</td>
 		</tr>
 		<tr>
+			<td>PULL_TYPES</td>
+			<td>Specify this to true and all post types will be pulled out of the database and _data files created for eachs, if you use this, then the *_DIR constants mean nothing.</td>
+		</tr>
+		<tr>
 			<td>PAGES_DIR</td>
 			<td>The directory name where the pages will be stored</td>
 		</tr>
