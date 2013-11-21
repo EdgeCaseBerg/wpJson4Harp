@@ -74,7 +74,7 @@ def makeExampleFile():
 	example.write('ul\n')
 	example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
 	example.write('    li\n')
-	example.write('      h3 #{blogpost.title} #{blogpost.date}\n')
+	example.write("      a(href=\"%(BLOG_DIR)s/#{blogpost.slug}\") #{blogpost.title} #{blogpost.date}\n" % globals())
 	example.write('      #{blogpost.content}\n')
 	example.close()
 
@@ -149,14 +149,19 @@ def databaseMigrate():
 			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if GENERATE_PAGES:
 				tmp = open("%s%s/%s.md" % (ROOT_DIR, PAGES_DIR, post.slug),'w')
+				tmp.write("#%s\n\n" % post.title)
 				tmp.write(post.content)
 				tmp.close()
-
 			if totalPages-1 != pcount:
 				p.write(',')
 			pcount+=1
 		elif post.ptype == "post":
 			b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			if GENERATE_POSTS:
+				tmp = open("%s%s/%s.md" % (ROOT_DIR, BLOG_DIR, post.slug),'w')
+				tmp.write("#%s\n\n" % post.title)
+				tmp.write(post.content)
+				tmp.close()
 			if totalPosts-1 != bcount:
 				b.write(',')
 			bcount+=1
