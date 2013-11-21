@@ -14,6 +14,10 @@ MYSQL_DB  =""
 WP_PREFIX = "wp_"
 ONLY_PUBLISHED = False
 ENCODING = 'latin' #irritating unicode
+PAGES_DIR = 'pages'
+BLOG_DIR = 'blog'
+NAV_DIR = 'nav'
+COMMENTS_DIR = 'comments'
 
 #Required: MySQLdb python module
 #On Linux: python-mysqldb
@@ -84,19 +88,16 @@ def databaseMigrate():
 	
 	del posts[0] #Remove placeholder
 	
-	#Page posts result in pages to be made.
-	pdir = 'pages'
-	bdir = 'blog'
-	ndir = 'nav'
-	if not os.path.exists(pdir):
-		os.makedirs(pdir)
-	if not os.path.exists(bdir):
-		os.makedirs(bdir)
-	if not os.path.exists(ndir):
-		os.makedirs(ndir)
-	p = open("%(pdir)s/_data.json" % locals(),'w')
-	b = open('%(bdir)s/_data.json' % locals(),'w')
-	n = open('%(ndir)s/_data.json' % locals(),'w')
+	
+	if not os.path.exists(PAGES_DIR):
+		os.makedirs(PAGES_DIR)
+	if not os.path.exists(BLOG_DIR):
+		os.makedirs(BLOG_DIR)
+	if not os.path.exists(NAV_DIR):
+		os.makedirs(NAV_DIR)
+	p = open("%(PAGES_DIR)s/_data.json" % globals(),'w')
+	b = open('%(BLOG_DIR)s/_data.json' % globals(),'w')
+	n = open('%(NAV_DIR)s/_data.json' % globals(),'w')
 	pcount = 0
 	bcount = 0
 	ncount = 0
@@ -159,10 +160,9 @@ def databaseMigrate():
 			setattr(comments[-1],row[9]. row[10])
 	del comments[0]
 
-	cdir = 'comments'
-	if not os.path.exists(cdir):
-		os.makedirs(cdir)
-	c = open('%(cdir)s/_data.json' % locals() ,'w' )
+	if not os.path.exists(COMMENTS_DIR):
+		os.makedirs(COMMENTS_DIR)
+	c = open('%(COMMENTS_DIR)s/_data.json' % globals() ,'w' )
 	c.write('{')
 	for comment in comments:
 		c.write("\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
@@ -173,19 +173,19 @@ def databaseMigrate():
 	example = open('example.jade','w')
 	example.write('h1 This is an example page to show your wp\n')
 	example.write('ul\n')
-	example.write('  each navitem in public.%(ndir)s._data\n' % locals())
+	example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
 	example.write('    li\n')
 	#This slug below might not be very good. 
 	example.write('      a(href="#{navitem._menu_item_url}") #{navitem.title}\n')
 	example.write('h2 Your Pages\n')
 	example.write('ul\n')
-	example.write('  each pagedata in public.%(pdir)s._data\n' % locals())
+	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
 	example.write('    li\n')
 	example.write('      h3 #{pagedata.title} #{pagedata.date}\n')
 	example.write('      #{pagedata.content}\n')
 	example.write('h2 Recents Posts\n')
 	example.write('ul\n')
-	example.write('  each blogpost in public.%(bdir)s._data\n' % locals())
+	example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
 	example.write('    li\n')
 	example.write('      h3 #{blogpost.title} #{blogpost.date}\n')
 	example.write('      #{blogpost.content}\n')
