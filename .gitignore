@@ -1,0 +1,7 @@
+*.jade
+blog/
+comments/
+nav/
+pages/
+#This is my harp test server name
+test/
