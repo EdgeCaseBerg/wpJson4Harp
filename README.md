@@ -25,6 +25,8 @@ To Run:
 
 Once you've ran the script, you'll get folders for each of the _data.json files. This makes things a bit easier to coordinate, and you can see from the example jade file how you can access the information pulled from your blog.
 
+It's pretty heavy on I/O from all the writes, but I pulled down a sizable wordpress database within a reasonable time (less than a minute) that had 347915 rows in the postmeta, and 34617 in the posts table, so it works alright. 
+
 If you'd like to try it out:
 
 1. Install [Wordpress](http://teamtreehouse.com/library/how-to-make-a-wordpress-blog/getting-started-with-wordpress/the-famous-5minute-wordpress-install-2)
@@ -88,6 +90,14 @@ Configuration of Script
 		<tr>
 			<td>ENCODING</td>
 			<td>The encoding to decode the content from the database in, I've defaulted it to latin to handle some annoying unicode errors</td>
+		</tr>
+		<tr>
+			<td>OUTPUT_ENCODING</td>
+			<td>The encoding to encode the _data.json files in</td>
+		</tr>
+		<tr>
+			<td>STRIP_NON_ASCII</td>
+			<td>strips out non-ascii characters from data being written into _data.json</td>
 		</tr>
 		<tr>
 			<td>PULL_TYPES</td>
