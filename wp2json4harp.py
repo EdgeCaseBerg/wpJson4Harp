@@ -13,11 +13,13 @@ MYSQL_PASS=""
 MYSQL_DB  =""
 WP_PREFIX = "wp_"
 ONLY_PUBLISHED = False
+ROOT_DIR = ''		#Leave empty for the folder you're in, specify otherwise otherwise.
 ENCODING = 'latin' #irritating unicode
 PAGES_DIR = 'pages'
 BLOG_DIR = 'blog'
 NAV_DIR = 'nav'
 COMMENTS_DIR = 'comments'
+EXAMPLE_FILE = 'example.jade'
 
 #Required: MySQLdb python module
 #On Linux: python-mysqldb
@@ -53,7 +55,7 @@ def checkAndMakeDir(path):
 
 def makeExampleFile():
 	#Generate a little bit of layout for the user to get started:
-	example = open('example.jade','w')
+	example = open("%s%s" %(ROOT_DIR, EXAMPLE_FILE),'w')
 	example.write('h1 This is an example page to show your wp\n')
 	example.write('ul\n')
 	example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
@@ -125,9 +127,9 @@ def databaseMigrate():
 	checkAndMakeDir(BLOG_DIR)
 	checkAndMakeDir(NAV_DIR)
 
-	p = open("%(PAGES_DIR)s/_data.json" % globals(),'w')
-	b = open('%(BLOG_DIR)s/_data.json' % globals(),'w')
-	n = open('%(NAV_DIR)s/_data.json' % globals(),'w')
+	p = open("%(ROOT_DIR)s%(PAGES_DIR)s/_data.json" % globals(),'w')
+	b = open('%(ROOT_DIR)s%(BLOG_DIR)s/_data.json' % globals(),'w')
+	n = open('%(ROOT_DIR)s%(NAV_DIR)s/_data.json' % globals(),'w')
 	pcount = 0
 	bcount = 0
 	ncount = 0
@@ -153,7 +155,6 @@ def databaseMigrate():
 			bcount+=1
 		elif post.ptype == "nav_menu_item" and hasattr(post,'_menu_item_url'):
 			n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
-			print totalNavs
 			if totalNavs-1 != ncount:
 				n.write(',')
 			ncount+=1
@@ -191,7 +192,7 @@ def databaseMigrate():
 	del comments[0]
 
 	checkAndMakeDir(COMMENTS_DIR)
-	c = open('%(COMMENTS_DIR)s/_data.json' % globals() ,'w' )
+	c = open('%(ROOT_DIR)s%(COMMENTS_DIR)s/_data.json' % globals() ,'w' )
 	c.write('{')
 	for comment in comments:
 		c.write("\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
