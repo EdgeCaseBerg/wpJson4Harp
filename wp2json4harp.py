@@ -13,7 +13,9 @@ MYSQL_PASS=""
 MYSQL_DB  =""
 WP_PREFIX = "wp_"
 ONLY_PUBLISHED = False
-ROOT_DIR = ''		#Leave empty for the folder you're in, specify otherwise otherwise.
+GENERATE_PAGES = True
+GENERATE_POSTS = True
+ROOT_DIR = 'test/'		#Leave empty for the folder you're in, specify otherwise otherwise.
 ENCODING = 'latin' #irritating unicode
 PAGES_DIR = 'pages'
 BLOG_DIR = 'blog'
@@ -66,7 +68,7 @@ def makeExampleFile():
 	example.write('ul\n')
 	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
 	example.write('    li\n')
-	example.write('      a(href="#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n')
+	example.write('      a(href="%(PAGES_DIR)s/#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n' % globals())
 	example.write('      #{pagedata.content}\n')
 	example.write('h2 Recents Posts\n')
 	example.write('ul\n')
@@ -145,6 +147,11 @@ def databaseMigrate():
 		if post.ptype == "page":
 			#Throw the id onto the string to ensure unique ness of the title
 			p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			if GENERATE_PAGES:
+				tmp = open("%s%s/%s.md" % (ROOT_DIR, PAGES_DIR, post.slug),'w')
+				tmp.write(post.content)
+				tmp.close()
+
 			if totalPages-1 != pcount:
 				p.write(',')
 			pcount+=1
