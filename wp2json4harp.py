@@ -30,17 +30,15 @@ import calendar, datetime
 import os
 
 
+#Need to give the json serializer it's own function because
+#datetimes will complain about not having a __dict__ method
 def default(obj):
     """Default JSON serializer."""
-
-
     if not isinstance(obj, datetime.datetime):
     	return obj.__dict__
     if isinstance(obj, datetime.datetime):
         if obj.utcoffset() is not None:
             obj = obj - obj.utcoffset()
-    
-    	
     millis = int(
         calendar.timegm(obj.timetuple()) * 1000 +
         obj.microsecond / 1000
@@ -49,7 +47,37 @@ def default(obj):
 
 import json
 
+def checkAndMakeDir(path):
+	if not os.path.exists(path):
+		os.makedirs(path)
 
+def makeExampleFile():
+	#Generate a little bit of layout for the user to get started:
+	example = open('example.jade','w')
+	example.write('h1 This is an example page to show your wp\n')
+	example.write('ul\n')
+	example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
+	example.write('    li\n')
+	#This slug below might not be very good. 
+	example.write('      a(href="#{navitem._menu_item_url}") #{navitem.title}\n')
+	example.write('h2 Your Pages\n')
+	example.write('ul\n')
+	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
+	example.write('    li\n')
+	example.write('      h3 #{pagedata.title} #{pagedata.date}\n')
+	example.write('      #{pagedata.content}\n')
+	example.write('h2 Recents Posts\n')
+	example.write('ul\n')
+	example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
+	example.write('    li\n')
+	example.write('      h3 #{blogpost.title} #{blogpost.date}\n')
+	example.write('      #{blogpost.content}\n')
+	example.close()
+
+
+#This is just a placeholder object that we attach tons of
+#dynamic fields to in order to make objects so our data
+#is a little bit easier to play with.
 class WP_Object(object):
 	def to_JSON(self):
 		return json.dumps(self, default=default, sort_keys=True, indent=4)
@@ -89,12 +117,10 @@ def databaseMigrate():
 	del posts[0] #Remove placeholder
 	
 	
-	if not os.path.exists(PAGES_DIR):
-		os.makedirs(PAGES_DIR)
-	if not os.path.exists(BLOG_DIR):
-		os.makedirs(BLOG_DIR)
-	if not os.path.exists(NAV_DIR):
-		os.makedirs(NAV_DIR)
+	checkAndMakeDir(PAGES_DIR)
+	checkAndMakeDir(BLOG_DIR)
+	checkAndMakeDir(NAV_DIR)
+
 	p = open("%(PAGES_DIR)s/_data.json" % globals(),'w')
 	b = open('%(BLOG_DIR)s/_data.json' % globals(),'w')
 	n = open('%(NAV_DIR)s/_data.json' % globals(),'w')
@@ -127,6 +153,7 @@ def databaseMigrate():
 				n.write(',')
 			ncount+=1
 		else:
+			#I'm just printing to look at the objects to decide to convert them into something or not.
 			print(post.to_JSON())
 			pass
 			#do what you will with the other types
@@ -138,9 +165,7 @@ def databaseMigrate():
 	b.close()
 	n.close()
 
-	sql = "SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals()
-	
-	curs.execute(sql)
+	curs.execute("SELECT c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email, c.comment_author_url, c.comment_date, c.comment_content, c.user_id, u.meta_value as nickname, cm.meta_key, cm.meta_value FROM %(WP_PREFIX)scomments c LEFT JOIN %(WP_PREFIX)scommentmeta cm ON c.comment_ID=cm.comment_id JOIN %(WP_PREFIX)susermeta u ON c.user_id in (u.user_id,0) WHERE u.meta_key='nickname' ORDER BY c.comment_post_ID " % globals())
 	placeholder = WP_Object()
 	setattr(placeholder,'ID',-1)
 	comments = [placeholder]
@@ -160,8 +185,7 @@ def databaseMigrate():
 			setattr(comments[-1],row[9]. row[10])
 	del comments[0]
 
-	if not os.path.exists(COMMENTS_DIR):
-		os.makedirs(COMMENTS_DIR)
+	checkAndMakeDir(COMMENTS_DIR)
 	c = open('%(COMMENTS_DIR)s/_data.json' % globals() ,'w' )
 	c.write('{')
 	for comment in comments:
@@ -169,27 +193,7 @@ def databaseMigrate():
 	c.write('}')
 	c.close()
 	
-	#Generate a little bit of layout for the user to get started:
-	example = open('example.jade','w')
-	example.write('h1 This is an example page to show your wp\n')
-	example.write('ul\n')
-	example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
-	example.write('    li\n')
-	#This slug below might not be very good. 
-	example.write('      a(href="#{navitem._menu_item_url}") #{navitem.title}\n')
-	example.write('h2 Your Pages\n')
-	example.write('ul\n')
-	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
-	example.write('    li\n')
-	example.write('      h3 #{pagedata.title} #{pagedata.date}\n')
-	example.write('      #{pagedata.content}\n')
-	example.write('h2 Recents Posts\n')
-	example.write('ul\n')
-	example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
-	example.write('    li\n')
-	example.write('      h3 #{blogpost.title} #{blogpost.date}\n')
-	example.write('      #{blogpost.content}\n')
-	example.close()
+	makeExampleFile()
 
 		
 if __name__ == "__main__":
