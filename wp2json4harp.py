@@ -64,7 +64,7 @@ def makeExampleFile():
 	example.write('ul\n')
 	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
 	example.write('    li\n')
-	example.write('      h3 a(href="pagedata.slug") #{pagedata.title} #{pagedata.date}\n')
+	example.write('      a(href="#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n')
 	example.write('      #{pagedata.content}\n')
 	example.write('h2 Recents Posts\n')
 	example.write('ul\n')
