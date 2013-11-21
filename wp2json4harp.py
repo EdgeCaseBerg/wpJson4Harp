@@ -23,6 +23,7 @@ BLOG_DIR = 'blog'
 NAV_DIR = 'nav'
 COMMENTS_DIR = 'comments'
 EXAMPLE_FILE = 'example.jade'
+STRIP_NON_ASCII = True
 PULL_TYPES = True
 
 #Required: MySQLdb python module
@@ -35,6 +36,14 @@ import sys
 import calendar, datetime
 import os
 import sets
+import re
+import codecs
+
+serializedArrayReg = r"^a:[0-9]+:{"
+serializedArraySearch = re.compile(serializedArrayReg)
+
+stripNewLines = r"\n"
+stripper = re.compile(stripNewLines)
 
 #Need to give the json serializer it's own function because
 #datetimes will complain about not having a __dict__ method
@@ -53,8 +62,23 @@ def default(obj):
 
 import json
 
+def strip_non_ascii(string):
+    ''' Returns the string without non ASCII characters'''
+    stripped = (c for c in string if 0 < ord(c) < 127)
+    return ''.join(stripped)
+
 def writeEncoded(fd,string):
-	fd.write(string.encode(OUTPUT_ENCODING))
+	if STRIP_NON_ASCII:
+		fd.write((strip_non_ascii(string).encode(OUTPUT_ENCODING)))
+	else:
+		fd.write(string.encode(OUTPUT_ENCODING))
+	
+
+def writeStrip(fd,string):
+	if STRIP_NON_ASCII:
+		fd.write( strip_non_ascii(stripper.sub('', strip_non_ascii(string).encode(OUTPUT_ENCODING) ) ))
+	else:
+		fd.write( stripper.sub('', string.encode(OUTPUT_ENCODING) ) )
 
 def checkAndMakeDir(path):
 	if not os.path.exists(path):
@@ -114,7 +138,7 @@ def databaseMigrate():
 	db = MySQLdb.connect(host=MYSQL_HOST,user=MYSQL_USER,passwd=MYSQL_PASS,  db=MYSQL_DB)
 	curs = db.cursor()
 
-	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, p.post_title, p.post_status, pm.meta_key, pm.meta_value, p.post_type, p.post_name from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id LEFT JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
+	curs.execute("SELECT p.ID, u.meta_value AS nickname , p.post_date_gmt, p.post_content, REPLACE(REPLACE(REPLACE(post_title, '\t', ''), '\r', ''), '\n', ''), p.post_status, pm.meta_key, pm.meta_value, p.post_type, p.post_name from %(WP_PREFIX)sposts p LEFT JOIN %(WP_PREFIX)spostmeta pm ON p.ID=pm.post_id LEFT JOIN %(WP_PREFIX)susermeta u ON p.post_author=u.user_id WHERE u.meta_key='nickname' ORDER BY p.ID"  % globals())
 
 	post_types = sets.Set()
 	placeholder = WP_Object()
@@ -128,10 +152,14 @@ def databaseMigrate():
 		setattr(posts[-1],'date',row[2])
 		setattr(posts[-1],'content',row[3].decode(ENCODING))
 		setattr(posts[-1],'title',row[4].decode(ENCODING))
-		setattr(posts[-1],'status',row[5])
+		setattr(posts[-1],'status',row[5].decode(ENCODING))
 		if row[6] and row[7]:
-			setattr(posts[-1],row[6].decode(ENCODING),row[7].decode(ENCODING))
-		setattr(posts[-1],'ptype',row[8])
+			if not serializedArraySearch.match(row[7]):
+				setattr(posts[-1],row[6].decode(ENCODING),row[7].decode(ENCODING))
+			else:
+				#TODO de-serialize php arrays
+				pass
+		setattr(posts[-1],'ptype',row[8].decode(ENCODING))
 		if row[9]:
 			setattr(posts[-1],'slug',row[9].decode(ENCODING))
 		else:
@@ -154,13 +182,14 @@ def databaseMigrate():
 		for post in posts:
 			if GENERATE_POSTS:
 				tmp = open("%s%s/%s.md" % (ROOT_DIR, post.ptype, post.slug),'w+')
-				writeEncoded(tmp,"#%s\n\n" % post.title)
+				writeEncoded(tmp,"#%s\n\n" % json.dumps(post.title.strip()))
 				if(hasattr(post,'content')):
 					writeEncoded(tmp,post.content)
 					delattr(post,'content')
 				tmp.close()
 			p = open("%s%s/_data.json" % (ROOT_DIR, post.ptype),'a')
-			writeEncoded(p," \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+			tobeprocessed = " %s : %s " % (json.dumps("%s%d" % (post.title.strip(),post.ID)), post.to_JSON())
+			writeEncoded(p, tobeprocessed )
 			if ptypeTotal[post.ptype]-1 != ptypeCount[post.ptype]:
 				writeEncoded(p,',')
 			ptypeCount[post.ptype]+=1
@@ -198,7 +227,7 @@ def databaseMigrate():
 					writeEncoded(tmp,post.content)
 					tmp.close()
 					delattr(post,'content')
-				writeEncoded(p," \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+				writeEncoded(p," %s : %s " % (json.dumps("%s%d" % (post.title.strip(),post.ID)),  post.to_JSON()) )
 				if totalPages-1 != pcount:
 					writeEncoded(p,',')
 				pcount+=1
@@ -209,7 +238,7 @@ def databaseMigrate():
 					writeEncoded(tmp,post.content)
 					tmp.close()
 					delattr(post,'content')
-				writeEncoded(b," \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+				writeEncoded(b," %s : %s " % (json.dumps("%s%d" % (post.title.strip(),post.ID)), post.to_JSON()) )
 				if totalPosts-1 != bcount:
 					writeEncoded(b,',')
 				bcount+=1
@@ -221,7 +250,7 @@ def databaseMigrate():
 						if int(temp_post.ID) == int(post._menu_item_object_id):
 							post.slug = "%s/%s" % (PAGES_DIR,temp_post.slug)
 							post.title = temp_post.title
-				writeEncoded(n,"\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
+				writeEncoded(n,"%s : %s " % (json.dumps( "%s%d" % (post.title.strip(),post.ID) ),post.to_JSON()))
 				if totalNavs-1 != ncount:
 					writeEncoded(n,',')
 				ncount+=1
@@ -255,14 +284,20 @@ def databaseMigrate():
 		setattr(comments[-1],'user_id',row[7])
 		setattr(comments[-1],'nickname',row[8].decode(ENCODING))
 		if row[9] is not None and row[10] is not None:
+
 			setattr(comments[-1],row[9], row[10])
 	del comments[0]
 
 	checkAndMakeDir("%(ROOT_DIR)s%(COMMENTS_DIR)s" % globals())
 	c = open("%(ROOT_DIR)s%(COMMENTS_DIR)s/_data.json" % globals() ,'w' )
 	writeEncoded(c,'{')
+	ccount = 0
+	cTotal = len(comments)
 	for comment in comments:
 		writeEncoded(c,"\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
+		if cTotal-1 != ccount:
+			writeEncoded(c,',')
+		ccount+=1
 	writeEncoded(c,'}')
 	c.close()
 
