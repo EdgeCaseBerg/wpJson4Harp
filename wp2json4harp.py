@@ -56,29 +56,38 @@ def checkAndMakeDir(path):
 	if not os.path.exists(path):
 		os.makedirs(path)
 
-def makeExampleFile():
+def makeExampleFile(post_types):
 	#Generate a little bit of layout for the user to get started:
 	example = open("%s%s" %(ROOT_DIR, EXAMPLE_FILE),'w')
 	example.write('h1 This is an example page to show your wp\n')
-	example.write('ul\n')
-	example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
-	example.write('    li\n')
-	#This slug below might not be very good. 
-	example.write('      a(href="#{navitem.slug}") #{navitem.title}\n')
-	example.write('h2 Your Pages\n')
-	example.write('ul\n')
-	example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
-	example.write('    li\n')
-	example.write('      a(href="%(PAGES_DIR)s/#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n' % globals())
-	example.write('      #{pagedata.content}\n')
-	example.write('h2 Recents Posts\n')
-	example.write('ul\n')
-	example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
-	example.write('    li\n')
-	example.write("      a(href=\"%(BLOG_DIR)s/#{blogpost.slug}\") #{blogpost.title} #{blogpost.date}\n" % globals())
-	example.write('      #{blogpost.content}\n')
+	if not PULL_TYPES:
+		example.write('ul\n')
+		example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
+		example.write('    li\n')
+		#This slug below might not be very good. 
+		example.write('      a(href="#{navitem.slug}") #{navitem.title}\n')
+		example.write('h2 Your Pages\n')
+		example.write('ul\n')
+		example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
+		example.write('    li\n')
+		example.write('      a(href="%(PAGES_DIR)s/#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n' % globals())
+		example.write('      #{pagedata.content}\n')
+		example.write('h2 Recents Posts\n')
+		example.write('ul\n')
+		example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
+		example.write('    li\n')
+		example.write("      a(href=\"%(BLOG_DIR)s/#{blogpost.slug}\") #{blogpost.title} #{blogpost.date}\n" % globals())
+		example.write('      #{blogpost.content}\n')
+	else:
+		for ptype in post_types:
+			example.write('h2 Your %s\n' % ptype)
+			example.write('ul\n')
+			example.write('  each blogpost in public.%(ptype)s._data\n' % locals())
+			example.write('    li\n')
+			example.write('      if(blogpost.slug)\n')
+			example.write('        a(href="%(ptype)s/#{blogpost.slug}") #{blogpost.title} #{blogpost.date}\n' % locals())
+		
 	example.close()
-
 
 #This is just a placeholder object that we attach tons of
 #dynamic fields to in order to make objects so our data
@@ -257,7 +266,7 @@ def databaseMigrate():
 	
 			
 	
-	makeExampleFile()
+	makeExampleFile(post_types)
 
 		
 if __name__ == "__main__":
