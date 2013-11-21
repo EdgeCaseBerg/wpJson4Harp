@@ -17,6 +17,7 @@ GENERATE_PAGES = True
 GENERATE_POSTS = True
 ROOT_DIR = 'test/'		#Leave empty for the folder you're in, specify otherwise otherwise.
 ENCODING = 'latin' #irritating unicode
+OUTPUT_ENCODING = 'latin'
 PAGES_DIR = 'pages'
 BLOG_DIR = 'blog'
 NAV_DIR = 'nav'
@@ -52,6 +53,9 @@ def default(obj):
 
 import json
 
+def writeEncoded(fd,string):
+	fd.write(string.encode(OUTPUT_ENCODING))
+
 def checkAndMakeDir(path):
 	if not os.path.exists(path):
 		os.makedirs(path)
@@ -59,33 +63,33 @@ def checkAndMakeDir(path):
 def makeExampleFile(post_types):
 	#Generate a little bit of layout for the user to get started:
 	example = open("%s%s" %(ROOT_DIR, EXAMPLE_FILE),'w')
-	example.write('h1 This is an example page to show your wp\n')
+	writeEncoded(example,('h1 This is an example page to show your wp\n'))
 	if not PULL_TYPES:
-		example.write('ul\n')
-		example.write('  each navitem in public.%(NAV_DIR)s._data\n' % globals())
-		example.write('    li\n')
+		writeEncoded(example,('ul\n'))
+		writeEncoded(example,('  each navitem in public.%(NAV_DIR)s._data\n' % globals()))
+		writeEncoded(example,('    li\n'))
 		#This slug below might not be very good. 
-		example.write('      a(href="#{navitem.slug}") #{navitem.title}\n')
-		example.write('h2 Your Pages\n')
-		example.write('ul\n')
-		example.write('  each pagedata in public.%(PAGES_DIR)s._data\n' % globals())
-		example.write('    li\n')
-		example.write('      a(href="%(PAGES_DIR)s/#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n' % globals())
-		example.write('      #{pagedata.content}\n')
-		example.write('h2 Recents Posts\n')
-		example.write('ul\n')
-		example.write('  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
-		example.write('    li\n')
-		example.write("      a(href=\"%(BLOG_DIR)s/#{blogpost.slug}\") #{blogpost.title} #{blogpost.date}\n" % globals())
-		example.write('      #{blogpost.content}\n')
+		writeEncoded(example,('      a(href="#{navitem.slug}") #{navitem.title}\n'))
+		writeEncoded(example,('h2 Your Pages\n'))
+		writeEncoded(example,('ul\n'))
+		writeEncoded(example,('  each pagedata inpublic.%(PAGES_DIR)s._data\n' % globals()) )
+		writeEncoded(example,('    li\n'))
+		writeEncoded(example,'      a(href="%(PAGES_DIR)s/#{pagedata.slug}") #{pagedata.title} #{pagedata.date}\n' % globals())
+		writeEncoded(example,'      #{pagedata.content}\n')
+		writeEncoded(example,'h2 Recents Posts\n')
+		writeEncoded(example,'ul\n')
+		writeEncoded(example,'  each blogpost in public.%(BLOG_DIR)s._data\n' % globals())
+		writeEncoded(example,'    li\n')
+		writeEncoded(example,"      a(href=\"%(BLOG_DIR)s/#{blogpost.slug}\") #{blogpost.title} #{blogpost.date}\n" % globals())
+		writeEncoded(example,'      #{blogpost.content}\n')
 	else:
 		for ptype in post_types:
-			example.write('h2 Your %s\n' % ptype)
-			example.write('ul\n')
-			example.write('  each blogpost in public.%(ptype)s._data\n' % locals())
-			example.write('    li\n')
-			example.write('      if(blogpost.slug)\n')
-			example.write('        a(href="%(ptype)s/#{blogpost.slug}") #{blogpost.title} #{blogpost.date}\n' % locals())
+			writeEncoded(example,'h2 Your %s\n' % ptype)
+			writeEncoded(example,'ul\n')
+			writeEncoded(example,'  each blogpost in public.%(ptype)s._data\n' % locals())
+			writeEncoded(example,'    li\n')
+			writeEncoded(example,'      if(blogpost.slug)\n')
+			writeEncoded(example,'        a(href="%(ptype)s/#{blogpost.slug}") #{blogpost.title} #{blogpost.date}\n' % locals())
 		
 	example.close()
 
@@ -94,7 +98,7 @@ def makeExampleFile(post_types):
 #is a little bit easier to play with.
 class WP_Object(object):
 	def to_JSON(self):
-		return json.dumps(self, default=default, sort_keys=True, indent=4)
+		return json.dumps(self, default=default, sort_keys=True, indent=4, ensure_ascii=False, encoding=OUTPUT_ENCODING)
 
 
 def databaseMigrate():
@@ -143,27 +147,27 @@ def databaseMigrate():
 		for ptype in post_types:
 			checkAndMakeDir("%s%s" % (ROOT_DIR,ptype))
 			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'w')
-			p.write('{')
+			writeEncoded(p,'{')
 			p.close()
 			ptypeCount[ptype] = 0
 			ptypeTotal[ptype] = sum(map(lambda x: x.ptype == ptype ,posts))
 		for post in posts:
 			if GENERATE_POSTS:
 				tmp = open("%s%s/%s.md" % (ROOT_DIR, post.ptype, post.slug),'w+')
-				tmp.write("#%s\n\n" % post.title.encode(ENCODING))
+				writeEncoded(tmp,"#%s\n\n" % post.title)
 				if(hasattr(post,'content')):
-					tmp.write(post.content.encode(ENCODING))
+					writeEncoded(tmp,post.content)
 					delattr(post,'content')
 				tmp.close()
 			p = open("%s%s/_data.json" % (ROOT_DIR, post.ptype),'a')
-			p.write(" \"%s%d\" : %s " % (post.title.encode(ENCODING), post.ID, post.to_JSON()) )
+			writeEncoded(p," \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 			if ptypeTotal[post.ptype]-1 != ptypeCount[post.ptype]:
-				p.write(',')
+				writeEncoded(p,',')
 			ptypeCount[post.ptype]+=1
 			p.close()
 		for ptype in post_types:
 			p = open("%s%s/_data.json" % (ROOT_DIR, ptype),'a+')
-			p.write('}')
+			writeEncoded(p,'}')
 			p.close()
 	else:
 		checkAndMakeDir("%(ROOT_DIR)s%(PAGES_DIR)s" % globals())
@@ -179,9 +183,10 @@ def databaseMigrate():
 		totalPages = sum(map(lambda x: x.ptype == "page",posts))
 		totalPosts = sum(map(lambda x: x.ptype == "post",posts))
 		totalNavs = sum(map(lambda x: x.ptype == "nav_menu_item" ,posts))
-		p.write('{')
-		b.write('{')
-		n.write('{')
+		
+		writeEncoded(p,'{')
+		writeEncoded(b,'{')
+		writeEncoded(n,'{')
 		for post in posts:
 			if ONLY_PUBLISHED and hasattr(post,'status') and post.status != "publish":
 					continue
@@ -189,24 +194,24 @@ def databaseMigrate():
 				#Throw the id onto the string to ensure unique ness of the title
 				if GENERATE_PAGES:
 					tmp = open("%s%s/%s.md" % (ROOT_DIR, PAGES_DIR, post.slug),'w')
-					tmp.write("#%s\n\n" % post.title)
-					tmp.write(post.content)
+					writeEncoded(tmp,"#%s\n\n" % post.title)
+					writeEncoded(tmp,post.content)
 					tmp.close()
 					delattr(post,'content')
-				p.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+				writeEncoded(p," \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 				if totalPages-1 != pcount:
-					p.write(',')
+					writeEncoded(p,',')
 				pcount+=1
 			elif post.ptype == "post":
 				if GENERATE_POSTS:
 					tmp = open("%s%s/%s.md" % (ROOT_DIR, BLOG_DIR, post.slug),'w')
-					tmp.write("#%s\n\n" % post.title)
-					tmp.write(post.content)
+					writeEncoded(tmp,"#%s\n\n" % post.title)
+					writeEncoded(tmp,post.content)
 					tmp.close()
 					delattr(post,'content')
-				b.write(" \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
+				writeEncoded(b," \"%s%d\" : %s " % (post.title, post.ID, post.to_JSON()) )
 				if totalPosts-1 != bcount:
-					b.write(',')
+					writeEncoded(b,',')
 				bcount+=1
 			elif post.ptype == "nav_menu_item" :
 				if post._menu_item_object == "custom":
@@ -216,9 +221,9 @@ def databaseMigrate():
 						if int(temp_post.ID) == int(post._menu_item_object_id):
 							post.slug = "%s/%s" % (PAGES_DIR,temp_post.slug)
 							post.title = temp_post.title
-				n.write("\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
+				writeEncoded(n,"\"%s%d\" : %s " % (post.title,post.ID,post.to_JSON()))
 				if totalNavs-1 != ncount:
-					n.write(',')
+					writeEncoded(n,',')
 				ncount+=1
 			else:
 				#I'm just printing to look at the objects to decide to convert them into something or not.
@@ -226,9 +231,9 @@ def databaseMigrate():
 				pass
 				#do what you will with the other types
 
-		p.write('}')
-		b.write('}')
-		n.write('}')
+		writeEncoded(p,'}')
+		writeEncoded(b,'}')
+		writeEncoded(n,'}')
 		p.close()
 		b.close()
 		n.close()
@@ -255,16 +260,12 @@ def databaseMigrate():
 
 	checkAndMakeDir("%(ROOT_DIR)s%(COMMENTS_DIR)s" % globals())
 	c = open("%(ROOT_DIR)s%(COMMENTS_DIR)s/_data.json" % globals() ,'w' )
-	c.write('{')
+	writeEncoded(c,'{')
 	for comment in comments:
-		c.write("\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
-	c.write('}')
+		writeEncoded(c,"\"%d-%d-%d\" : %s" % (comment.post_ID, (comment.date - datetime.datetime(1970,1,1)).total_seconds(), comment.ID, comment.to_JSON()) )
+	writeEncoded(c,'}')
 	c.close()
 
-
-	
-	
-			
 	
 	makeExampleFile(post_types)
 
