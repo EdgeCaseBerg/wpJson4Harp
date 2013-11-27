@@ -123,6 +123,10 @@ Configuration of Script
 			<td>EXAMPLE_FILE</td>
 			<td>The name of the file that will be generated to show some of the posts and pages.</td>
 		</tr>
+		<tr>
+			<td>STOP_ON_ERR</td>
+			<td>Boolean value that causes errors to stop the script, </td>
+		</tr>
 	</tbody>
 </table>
 
