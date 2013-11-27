@@ -25,12 +25,17 @@ COMMENTS_DIR = 'comments'
 EXAMPLE_FILE = 'example.jade'
 STRIP_NON_ASCII = True
 PULL_TYPES = True
+STOP_ON_ERR = False
 
 #Required: MySQLdb python module
 #On Linux: python-mysqldb
 #Windows: http://sourceforge.net/projects/mysql-python/files/
 #Mac: http://stackoverflow.com/questions/1448429/how-to-install-mysqldb-python-data-access-library-to-mysql-on-mac-os-x#1448476
 import MySQLdb
+
+#You'll need phpserialize for the deserialization of the objects from php
+#install: pip install phpserialize
+import phpserialize
 
 import sys
 import calendar, datetime
@@ -124,6 +129,14 @@ class WP_Object(object):
 	def to_JSON(self):
 		return json.dumps(self, default=default, sort_keys=True, indent=4, ensure_ascii=False, encoding=OUTPUT_ENCODING)
 
+	def __init__(self,**kwargs):
+		for k,v in kwargs.iteritems():
+			setattr(self,k,v)
+
+def obj_hook(name,d):
+	cls = {name : WP_Object}[name]	
+	d= phpserialize.convert_member_dict(d)
+	return cls(**d)
 
 def databaseMigrate():
 	#Verify database connection
@@ -157,15 +170,21 @@ def databaseMigrate():
 			if not serializedArraySearch.match(row[7]):
 				setattr(posts[-1],row[6].decode(ENCODING),row[7].decode(ENCODING))
 			else:
-				#TODO de-serialize php arrays
-				pass
+				try:
+					setattr(posts[-1],row[6], phpserialize.loads(row[7], object_hook=obj_hook))
+				except ValueError, e:
+					pass #If a failure occurs here it's probably a corrupt object
+					print "Failed to load: ",row[7]
+					if STOP_ON_ERR:
+						curs.close()
+						db.close()
+						sys.exit()
 		setattr(posts[-1],'ptype',row[8].decode(ENCODING))
 		if row[9]:
 			setattr(posts[-1],'slug',row[9].decode(ENCODING))
 		else:
 			setattr(posts[-1],'slug',row[0])
 		post_types.add(row[8])
-	
 	del posts[0] #Remove placeholder
 	
 
